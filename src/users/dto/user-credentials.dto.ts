@@ -4,9 +4,9 @@ export class UserCredentialsDto {
   @IsNotEmpty()
   email: string;
 
-  @MinLength(6)
+  @MinLength(8)
   @MaxLength(32)
-  @Matches(/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, {
+  @Matches(/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]$/, {
     message: 'Password is too weak',
   })
   password: string;
