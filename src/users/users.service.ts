@@ -22,17 +22,4 @@ export class UsersService {
       throw new InternalServerErrorException();
     }
   }
-
-  async signIn(userCredentialsDto: UserCredentialsDto): Promise<void> {
-    const {email, password} = userCredentialsDto;
-    const user = await this.usersRepository.findOne({ where: { email: email}});
-
-    if (user && (await bcrypt.compare(password, user.password))) {
-      // add payload
-      // get accessToken
-      // return {accessToken}
-    }
-    else
-      throw new UnauthorizedException('Please check your login credentials'); // change exception
-  }
 }
