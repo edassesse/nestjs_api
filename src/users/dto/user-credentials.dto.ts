@@ -6,7 +6,7 @@ export class UserCredentialsDto {
 
   @MinLength(8)
   @MaxLength(32)
-  @Matches(/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]$/, {
+  @Matches(/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, {
     message: 'Password is too weak',
   })
   password: string;
