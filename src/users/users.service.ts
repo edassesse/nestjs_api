@@ -23,24 +23,22 @@ export class UsersService {
   async signUp(userCredentialsDto: UserCredentialsDto): Promise<void> {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(userCredentialsDto.password, salt);
-    const verificationToken = await bcrypt.hash(userCredentialsDto.email, salt);
 
     try {
       await this.usersRepository.save({
         email: userCredentialsDto.email,
         password: hashedPassword,
-        verificationToken: verificationToken,
       });
     } catch (error) {
       throw new InternalServerErrorException();
     }
-    this.sendEmail(userCredentialsDto.email, verificationToken);
+    this.sendEmail(userCredentialsDto.email);
   }
 
-  sendEmail(toEmail: string, verificationToken: string): void {
+  async sendEmail(toEmail: string): Promise<void> {
+    const verificationToken = (await this.usersRepository.findOneBy({ email: toEmail })).id;
     const templatePath = 'email-templates/verification.html';
     const verificationLink = `http://localhost:3000/users/verify/${verificationToken}`;
-    console.log(`|{__dirname}|{templatePath}`);
     const template = fs.readFileSync(templatePath, 'utf-8');
     const html = template
       .replace('{{username}}', toEmail)
@@ -53,26 +51,46 @@ export class UsersService {
       subject: 'Verify your email',
       html: html,
     };
-    sgMail
-      .send(msg)
-      .then(() => {
-        console.log('Email sent');
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    try {
+      sgMail.send(msg);
+      console.log('Email sent');
+    } catch (error) {
+      console.log(error);
+    }
   }
 
-  async verifyEmail(verificationToken: string): Promise<void> {
+  async verifyEmail(verificationToken: string): Promise<string> {
     try {
       const user: User = await this.usersRepository.findOneBy({
-        verificationToken: verificationToken,
+        id: verificationToken,
       });
       user.isVerified = true;
-      console.log(user);
       this.usersRepository.save(user);
+      return `<!DOCTYPE html>
+        <html>
+        <head>
+            <title> Email Verification</title>
+        </head>
+        <body>
+            <div>
+                <h1>Email Verified</h1>
+                <p>Your email has been successfully verified. Thank you!</p>
+            </div>
+        </body>
+        </html>`;
     } catch (error) {
-      throw new NotFoundException();
+      return `<!DOCTYPE html>
+        <html>
+        <head>
+            <title>Email Verification</title>
+        </head>
+        <body>
+            <div>
+                <h1>Email Verification Failed</h1>
+                <p>There was an error during email verification.</p>
+            </div>
+        </body>
+        </html>`;
     }
   }
 }

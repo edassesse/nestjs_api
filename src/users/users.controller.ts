@@ -22,8 +22,7 @@ export class UsersController {
   }
 
   @Get('/verify/:verificationToken')
-  async verifyEmail(@Param('verificationToken') verificationToken: string): Promise<void> {
-    console.log("on passe?");
-    this.usersService.verifyEmail(verificationToken);
+  async verifyEmail(@Param('verificationToken') verificationToken: string): Promise<string> {
+    return await this.usersService.verifyEmail(verificationToken);
   }
 }
