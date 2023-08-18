@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards, Request, Param } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AppJwtGuard } from 'src/auth/app-jwt.guard';
 import { UserCredentialsDto } from './dto/user-credentials.dto';
@@ -19,5 +19,11 @@ export class UsersController {
   async appOnly(@Request() req) {
     const user: User = req.user;
     return user;
+  }
+
+  @Get('/verify/:verificationToken')
+  async verifyEmail(@Param('verificationToken') verificationToken: string): Promise<void> {
+    console.log("on passe?");
+    this.usersService.verifyEmail(verificationToken);
   }
 }

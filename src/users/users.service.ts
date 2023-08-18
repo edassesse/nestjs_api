@@ -1,9 +1,17 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserCredentialsDto } from './dto/user-credentials.dto';
 import * as bcrypt from 'bcrypt';
+import * as sgMail from '@sendgrid/mail';
 import { User } from './user.entity';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class UsersService {
@@ -15,21 +23,35 @@ export class UsersService {
   async signUp(userCredentialsDto: UserCredentialsDto): Promise<void> {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(userCredentialsDto.password, salt);
-    userCredentialsDto.password = hashedPassword;
+    const verificationToken = await bcrypt.hash(userCredentialsDto.email, salt);
+
     try {
-      await this.usersRepository.save(userCredentialsDto);
+      await this.usersRepository.save({
+        email: userCredentialsDto.email,
+        password: hashedPassword,
+        verificationToken: verificationToken,
+      });
     } catch (error) {
       throw new InternalServerErrorException();
     }
-    console.log(process.env.SENDGRID_API_KEY);
-    const sgMail = require('@sendgrid/mail');
+    this.sendEmail(userCredentialsDto.email, verificationToken);
+  }
+
+  sendEmail(toEmail: string, verificationToken: string): void {
+    const templatePath = 'email-templates/verification.html';
+    const verificationLink = `http://localhost:3000/users/verify/${verificationToken}`;
+    console.log(`|{__dirname}|{templatePath}`);
+    const template = fs.readFileSync(templatePath, 'utf-8');
+    const html = template
+      .replace('{{username}}', toEmail)
+      .replace('{{verificationLink}}', verificationLink);
+
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
-      to: userCredentialsDto.email, // Change to your recipient
-      from: 'dassesseernest@gmail.com', // Change to your verified sender
-      subject: 'Sending with SendGrid is Fun',
-      text: 'and easy to do anywhere, even with Node.js',
-      html: '<strong>and easy to do anywhere, even with Node.js</strong>',
+      to: toEmail,
+      from: 'dassesseernest@gmail.com',
+      subject: 'Verify your email',
+      html: html,
     };
     sgMail
       .send(msg)
@@ -39,5 +61,18 @@ export class UsersService {
       .catch((error) => {
         console.error(error);
       });
+  }
+
+  async verifyEmail(verificationToken: string): Promise<void> {
+    try {
+      const user: User = await this.usersRepository.findOneBy({
+        verificationToken: verificationToken,
+      });
+      user.isVerified = true;
+      console.log(user);
+      this.usersRepository.save(user);
+    } catch (error) {
+      throw new NotFoundException();
+    }
   }
 }
